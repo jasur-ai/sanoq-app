@@ -16,7 +16,22 @@ npm run build
 npm run preview
 ```
 
-Build qilingan ilova `dist/` ichida bo‘ladi. Brauzer menyusidan **Install app** orqali telefon yoki kompyuterga o‘rnatiladi. Ilova ishga tushgach, barcha hisoblar shu qurilmaning local storage xotirasida saqlanadi va internet bo‘lmasa ham ishlaydi.
+Build qilingan ilova `dist/` ichida bo‘ladi. Brauzer menyusidan **Install app** orqali telefon yoki kompyuterga o‘rnatiladi. Android uchun Capacitor wrapper ham qo‘shilgan.
+
+## Android APK
+
+APK olish uchun Android SDK va Java 21 o‘rnatilgan bo‘lishi kerak:
+
+```bash
+npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+APK manzili: `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+Ilova ishga tushgach, barcha hisoblar shu qurilmaning local storage xotirasida saqlanadi va internet bo‘lmasa ham ishlaydi.
 
 ## Muhim
 

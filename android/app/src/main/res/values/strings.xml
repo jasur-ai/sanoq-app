@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sanoq</string>
+    <string name="title_activity_main">Sanoq</string>
+    <string name="package_name">com.jasurai.sanoq</string>
+    <string name="custom_url_scheme">com.jasurai.sanoq</string>
+</resources>
