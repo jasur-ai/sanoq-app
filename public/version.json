@@ -1,5 +1,5 @@
 {
-  "version": "0.0.01",
-  "releaseNotes": "Vitr namozi, alohida statistika, manual reset va barqaror Android yuklanishi qo‘shildi.",
-  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.0.01/Sanoq.apk"
+  "version": "0.0.02",
+  "releaseNotes": "Real online Supabase account, server tekshiradigan unique username, cloud statistics va moslashuvchan UI.",
+  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.0.02/Sanoq.apk"
 }

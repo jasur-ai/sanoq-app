@@ -1,13 +1,36 @@
 # Sanoq — Namoz hisoblagichi
 
-Oflayn ishlaydigan, mobilga mos namoz sanoq ilovasi. React + Vite asosida yaratilgan.
+Mobilga mos, offline-first namoz sanoq ilovasi. React + Vite + Capacitor + Supabase asosida yaratilgan.
 
 ## Ishga tushirish
 
 ```bash
 npm install
+cp .env.example .env.local
+# .env.local ichiga Supabase URL va publishable key yozing
 npm run dev
 ```
+
+## Supabase online account
+
+1. Supabase Dashboard → SQL Editor’ni oching.
+2. `supabase/migrations/20260913000000_sanoq_online_auth.sql` faylini to‘liq ishga tushiring.
+3. `.env.local` ichida quyidagilar bo‘lsin:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
+```
+
+Migration quyidagilarni yaratadi:
+
+- real Supabase Auth login/signup;
+- server tomonda unique username;
+- username orqali login uchun xavfsiz RPC;
+- RLS bilan himoyalangan profiles jadvali;
+- har bir foydalanuvchi uchun cloud statistics.
+
+Faqat `publishable/anon` key frontend’da ishlatiladi. `sb_secret` yoki service key’ni frontend’ga qo‘ymang va repository’ga commit qilmang.
 
 ## Build
 
@@ -16,11 +39,9 @@ npm run build
 npm run preview
 ```
 
-Build qilingan ilova `dist/` ichida bo‘ladi. Brauzer menyusidan **Install app** orqali telefon yoki kompyuterga o‘rnatiladi. Android uchun Capacitor wrapper ham qo‘shilgan.
-
 ## Android APK
 
-APK olish uchun Android SDK va Java 21 o‘rnatilgan bo‘lishi kerak:
+Android SDK va Java 21 o‘rnatilgan bo‘lishi kerak:
 
 ```bash
 npm run build
@@ -31,8 +52,10 @@ cd android
 
 APK manzili: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-Ilova ishga tushgach, barcha hisoblar shu qurilmaning local storage xotirasida saqlanadi va internet bo‘lmasa ham ishlaydi.
+## Versiya yangilanishi
 
-## Muhim
+Hozirgi versiya `0.0.02`. Account oynasidagi **Versiyani tekshirish** tugmasi GitHub’dagi `public/version.json` faylini tekshiradi. Yangi versiya topilsa, **Yangilash** tugmasi release APK’ni ochadi. Android oxirgi o‘rnatish tasdig‘ini xavfsizlik sabab o‘zi so‘raydi.
 
-Bu hozircha backend’siz local-first versiya: akkaunt, username va sanoqlar faqat foydalanilayotgan qurilmada saqlanadi. Haqiqiy serverlararo akkaunt sinxronizatsiyasi uchun keyinroq backend ulash mumkin.
+## Offline ishlash
+
+Sanoq va oxirgi statistika qurilmada cache qilinadi. Internet bo‘lsa Supabase bilan sinxronlanadi, internet uzilsa ham lokal ma’lumotlar bilan davom etadi.

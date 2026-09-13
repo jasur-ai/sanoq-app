@@ -1,8 +1,9 @@
 import { Component, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { supabase, supabaseConfigured } from './supabaseClient';
 import './styles.css';
 
-const APP_VERSION = '0.0.01';
+const APP_VERSION = '0.0.02';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/jasur-ai/sanoq-app/main/public/version.json';
 const USERS_KEY = 'sanoq:users:v1';
 const SESSION_KEY = 'sanoq:session:v1';
@@ -159,34 +160,50 @@ function Brand({ compact = false }) {
 
 function AuthScreen({ onAuth, theme, onThemeToggle }) {
   const [mode, setMode] = useState('signup');
-  const [form, setForm] = useState({ name: '', username: '', password: '' });
+  const [form, setForm] = useState({ name: '', username: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [isBusy, setIsBusy] = useState(false);
-  const update = (field, value) => { setForm((current) => ({ ...current, [field]: value })); setError(''); };
-  const submit = (event) => {
+  const update = (field, value) => { setForm((current) => ({ ...current, [field]: value })); setError(''); setInfo(''); };
+  const switchMode = (nextMode) => { setMode(nextMode); setError(''); setInfo(''); };
+  const submit = async (event) => {
     event.preventDefault();
-    const username = normalizeUsername(form.username);
-    const users = safeRead(USERS_KEY, []);
     setError('');
-    if (mode === 'signup') {
-      if (form.name.trim().length < 2) return setError('Ismingizni kiriting.');
-      if (!/^[a-z0-9_]{3,24}$/.test(username)) return setError('Username 3–24 belgidan iborat bo‘lsin.');
-      if (form.password.length < 4) return setError('Parol kamida 4 belgidan iborat bo‘lsin.');
-      if (users.some((user) => user.username === username)) return setError('Bu username band. Boshqasini tanlang.');
-      setIsBusy(true);
-      const user = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: form.name.trim(), username, password: form.password };
-      window.setTimeout(() => { safeWrite(USERS_KEY, [...users, user]); onAuth({ id: user.id, name: user.name, username: user.username }); }, 250);
-      return;
-    }
-    const user = users.find((candidate) => candidate.username === username && candidate.password === form.password);
-    if (!user) return setError('Username yoki parol noto‘g‘ri.');
+    setInfo('');
+    if (!supabaseConfigured || !supabase) return setError('Online server sozlanmagan. Keyinroq qayta urinib ko‘ring.');
+    const username = normalizeUsername(form.username);
+    if (!/^[a-z0-9_]{3,24}$/.test(username)) return setError('Username 3–24 belgidan iborat bo‘lsin: harf, raqam yoki _.');
+    if (form.password.length < 6) return setError('Parol kamida 6 belgidan iborat bo‘lsin.');
     setIsBusy(true);
-    window.setTimeout(() => onAuth({ id: user.id, name: user.name, username: user.username }), 250);
+    try {
+      if (mode === 'signup') {
+        if (form.name.trim().length < 2) throw new Error('Ismingizni kiriting.');
+        if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) throw new Error('To‘g‘ri email manzilini kiriting.');
+        const { data, error: signUpError } = await supabase.auth.signUp({ email: form.email.trim().toLowerCase(), password: form.password, options: { data: { full_name: form.name.trim(), username } } });
+        if (signUpError) throw signUpError;
+        if (data.session) onAuth(data.session);
+        else { setInfo('Email manzilingizga tasdiqlash xabari yuborildi. Emailni tasdiqlab, keyin kiring.'); setMode('login'); }
+        return;
+      }
+      const { data: email, error: lookupError } = await supabase.rpc('lookup_email_by_username', { p_username: username });
+      if (lookupError) throw new Error('Username bazasi hali sozlanmagan. Supabase migration SQL’ni ishga tushiring.');
+      if (!email) throw new Error('Username yoki parol noto‘g‘ri.');
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password: form.password });
+      if (loginError) throw loginError;
+      onAuth(data.session);
+    } catch (authError) {
+      const message = String(authError?.message || 'Kirishda xatolik yuz berdi.');
+      if (message.toLowerCase().includes('username')) setError(message.includes('migration') ? message : 'Bu username band yoki noto‘g‘ri.');
+      else if (message.toLowerCase().includes('already registered')) setError('Bu email allaqachon ro‘yxatdan o‘tgan.');
+      else if (message.toLowerCase().includes('invalid login')) setError('Username yoki parol noto‘g‘ri.');
+      else setError(message);
+    } finally {
+      setIsBusy(false);
+    }
   };
-  return <main className="auth-page"><div className="auth-background-shape shape-one" /><div className="auth-background-shape shape-two" /><header className="auth-topbar"><Brand /><button className="icon-button ghost" onClick={onThemeToggle} aria-label="Rejimni almashtirish"><Icon name={theme === 'light' ? 'moon' : 'sun'} size={19} /></button></header><section className="auth-layout"><div className="auth-intro"><div className="eyebrow"><span className="eyebrow-dot" /> Tinchlik bilan sanang</div><h1>Har bir amal —<br /><em>bir go‘zal qadam.</em></h1><p>Namoz sanoqlaringizni chiroyli, tartibli va doim yoningizda saqlang. Internet kerak emas.</p><div className="auth-benefits"><div><span className="benefit-icon"><Icon name="check" size={15} /></span><span>Oflayn ham ishlaydi</span></div><div><span className="benefit-icon"><Icon name="lock" size={15} /></span><span>Ma’lumotlar qurilmangizda</span></div></div></div><div className="auth-card"><div className="auth-card-heading"><div className="mobile-brand"><Brand compact /></div><h2>{mode === 'signup' ? 'Xush kelibsiz' : 'Qaytganingizdan xursandmiz'}</h2><p>{mode === 'signup' ? 'Sanoqni boshlash uchun hisob yarating.' : 'Hisobingizga kirish uchun ma’lumotlarni kiriting.'}</p></div><div className="auth-tabs"><button className={mode === 'signup' ? 'active' : ''} onClick={() => { setMode('signup'); setError(''); }}>Ro‘yxatdan o‘tish</button><button className={mode === 'login' ? 'active' : ''} onClick={() => { setMode('login'); setError(''); }}>Kirish</button></div><form onSubmit={submit} className="auth-form">{mode === 'signup' && <label className="field-label">Ismingiz<span className="input-wrap"><Icon name="user" size={18} /><input value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="Masalan, Jasur" /></span></label>}<label className="field-label">Username<span className="input-wrap"><span className="input-prefix">@</span><input value={form.username} onChange={(event) => update('username', event.target.value.replace(/\s/g, ''))} placeholder="username" /></span></label><label className="field-label">Parol<span className="input-wrap"><Icon name="lock" size={18} /><input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(event) => update('password', event.target.value)} placeholder="••••••••" /><button type="button" className="input-action" onClick={() => setShowPassword((value) => !value)}><Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} /></button></span></label>{error && <div className="form-error"><Icon name="info" size={16} />{error}</div>}<button className="primary-button auth-submit" type="submit" disabled={isBusy}>{isBusy ? <span className="button-loader" /> : <>{mode === 'signup' ? 'Hisob yaratish' : 'Kirish'}<Icon name="arrowRight" size={18} /></>}</button></form><p className="auth-note"><Icon name="lock" size={14} /> Hisob lokal qurilmangizda saqlanadi.</p></div></section><footer className="auth-footer">© {new Date().getFullYear()} Sanoq <span>•</span> Soddalik bilan yaratilgan</footer></main>;
+  return <main className="auth-page"><div className="auth-background-shape shape-one" /><div className="auth-background-shape shape-two" /><header className="auth-topbar"><Brand /><button className="icon-button ghost" onClick={onThemeToggle} aria-label="Rejimni almashtirish"><Icon name={theme === 'light' ? 'moon' : 'sun'} size={19} /></button></header><section className="auth-layout"><div className="auth-intro"><div className="eyebrow"><span className="eyebrow-dot" /> Onlayn va xavfsiz</div><h1>Har bir amal —<br /><em>bir go‘zal qadam.</em></h1><p>Namoz sanoqlaringizni hisobingiz bilan saqlang. Internet bo‘lmasa ham oxirgi ma’lumotlar qurilmangizda qoladi.</p><div className="auth-benefits"><div><span className="benefit-icon"><Icon name="check" size={15} /></span><span>Username serverda tekshiriladi</span></div><div><span className="benefit-icon"><Icon name="lock" size={15} /></span><span>Ma’lumotlar hisobingizga bog‘langan</span></div></div></div><div className="auth-card"><div className="auth-card-heading"><div className="mobile-brand"><Brand compact /></div><h2>{mode === 'signup' ? 'Xush kelibsiz' : 'Qaytganingizdan xursandmiz'}</h2><p>{mode === 'signup' ? 'Onlayn hisob yarating va Sanoqni boshlang.' : 'Username va parolingiz bilan kiring.'}</p></div><div className="auth-tabs"><button className={mode === 'signup' ? 'active' : ''} onClick={() => switchMode('signup')}>Ro‘yxatdan o‘tish</button><button className={mode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>Kirish</button></div><form onSubmit={submit} className="auth-form">{mode === 'signup' && <label className="field-label">Ismingiz<span className="input-wrap"><Icon name="user" size={18} /><input value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="Masalan, Jasur" /></span></label>}<label className="field-label">Username<span className="input-wrap"><span className="input-prefix">@</span><input value={form.username} onChange={(event) => update('username', event.target.value.replace(/\s/g, ''))} placeholder="username" autoCapitalize="none" /></span></label>{mode === 'signup' && <label className="field-label">Email<span className="input-wrap"><Icon name="info" size={18} /><input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="siz@email.com" autoCapitalize="none" /></span></label>}<label className="field-label">Parol<span className="input-wrap"><Icon name="lock" size={18} /><input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(event) => update('password', event.target.value)} placeholder="••••••••" /><button type="button" className="input-action" onClick={() => setShowPassword((value) => !value)}><Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} /></button></span></label>{error && <div className="form-error"><Icon name="info" size={16} />{error}</div>}{info && <div className="form-info"><Icon name="checkCircle" size={16} />{info}</div>}<button className="primary-button auth-submit" type="submit" disabled={isBusy}>{isBusy ? <span className="button-loader" /> : <>{mode === 'signup' ? 'Hisob yaratish' : 'Kirish'}<Icon name="arrowRight" size={18} /></>}</button></form><p className="auth-note"><Icon name="wifi" size={14} /> Real online account va unique username.</p></div></section><footer className="auth-footer">© {new Date().getFullYear()} Sanoq <span>•</span> {APP_VERSION}</footer></main>;
 }
-
 function PrayerCard({ prayer, count, manual, onAdd, onManualEdit }) {
   return <article className={`prayer-card accent-${prayer.accent} ${manual ? 'manual-active' : ''}`}><div className="prayer-card-top"><div className="prayer-icon"><Icon name={prayer.icon} size={23} /></div><div className="prayer-heading"><h3>{prayer.title}</h3><span>{prayer.subtitle}</span></div><span className="arabic-label" lang="ar">{prayer.arabic}</span></div><div className="count-area"><button className={`count-value ${manual ? 'count-editable' : ''}`} onClick={() => manual && onManualEdit(prayer)} aria-label={`${prayer.title} sanog‘i: ${count}`}>{formatNumber(count)}{manual && <Icon name="edit" size={15} />}</button><span className="count-caption">jami o‘qilgan</span></div><button className={`count-button ${manual ? 'manual-button' : ''}`} onClick={() => manual ? onManualEdit(prayer) : onAdd(prayer)}><Icon name={manual ? 'edit' : 'plus'} size={18} />{manual ? 'Sanog‘ni tahrirlash' : 'Sanoqni oshirish'}</button></article>;
 }
@@ -202,7 +219,7 @@ function Modal({ modal, onClose, onConfirm, manualValue, setManualValue }) {
 
 function AccountModal({ session, onClose, onLogout, update, onCheck, onInstall }) {
   const statusText = { idle: 'Internetga ulangan holda versiyani tekshiring.', checking: 'Yangilanishlar tekshirilmoqda...', upToDate: `Sizda eng so‘nggi versiya — ${APP_VERSION}.`, available: `${update.latest?.version} versiyasi tayyor.`, offline: 'Internet aloqasi yo‘q. Keyinroq qayta urinib ko‘ring.', error: 'Tekshirishda xatolik yuz berdi.' }[update.status];
-  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="account-modal" role="dialog" aria-modal="true"><button className="modal-close" onClick={onClose} aria-label="Yopish"><Icon name="x" size={19} /></button><div className="account-hero"><span className="avatar account-avatar">{getInitials(session.name)}</span><div><h2>{session.name}</h2><p>@{session.username}</p></div></div><div className="account-info-list"><div><span>Akkaunt</span><strong>Local profil</strong></div><div><span>Ma’lumotlar</span><strong>Qurilmada saqlanadi</strong></div><div><span>Ilova versiyasi</span><strong>{APP_VERSION}</strong></div></div><div className="version-box"><div className="version-box-title"><span className="version-icon"><Icon name="refresh" size={17} /></span><div><strong>Versiya yangilanishi</strong><span>{statusText}</span></div></div>{update.status === 'available' ? <button className="primary-button update-button" onClick={onInstall}>Yangilash <Icon name="arrowRight" size={16} /></button> : <button className="secondary-button check-button" onClick={onCheck} disabled={update.status === 'checking'}>{update.status === 'checking' ? <span className="small-loader" /> : <Icon name="wifi" size={16} />} Versiyani tekshirish</button>}{update.status === 'available' && <button className="secondary-button check-again" onClick={onCheck}>Qayta tekshirish</button>}</div><button className="account-logout" onClick={onLogout}><Icon name="logout" size={17} /> Hisobdan chiqish</button></section></div>;
+  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="account-modal" role="dialog" aria-modal="true"><button className="modal-close" onClick={onClose} aria-label="Yopish"><Icon name="x" size={19} /></button><div className="account-hero"><span className="avatar account-avatar">{getInitials(session.name)}</span><div><h2>{session.name}</h2><p>@{session.username}</p></div></div><div className="account-info-list"><div><span>Akkaunt</span><strong>Online profil</strong></div><div><span>Ma’lumotlar</span><strong>Bulut + qurilma</strong></div><div><span>Ilova versiyasi</span><strong>{APP_VERSION}</strong></div></div><div className="version-box"><div className="version-box-title"><span className="version-icon"><Icon name="refresh" size={17} /></span><div><strong>Versiya yangilanishi</strong><span>{statusText}</span></div></div>{update.status === 'available' ? <button className="primary-button update-button" onClick={onInstall}>Yangilash <Icon name="arrowRight" size={16} /></button> : <button className="secondary-button check-button" onClick={onCheck} disabled={update.status === 'checking'}>{update.status === 'checking' ? <span className="small-loader" /> : <Icon name="wifi" size={16} />} Versiyani tekshirish</button>}{update.status === 'available' && <button className="secondary-button check-again" onClick={onCheck}>Qayta tekshirish</button>}</div><button className="account-logout" onClick={onLogout}><Icon name="logout" size={17} /> Hisobdan chiqish</button></section></div>;
 }
 
 function StatsSection({ stats }) {
@@ -227,7 +244,24 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
   const [update, setUpdate] = useState({ status: 'idle', latest: null });
 
   const showToast = (message, type = 'success') => { setToast({ message, type }); window.setTimeout(() => setToast(null), 2800); };
-  const persistStats = (next) => { setStats(next); safeWrite(statsKey, next); safeWrite(`${COUNTS_PREFIX}${session.username}`, next.counts); };
+  useEffect(() => {
+    if (!supabase || !session.id) return undefined;
+    let active = true;
+    supabase.from('user_data').select('stats').eq('user_id', session.id).maybeSingle().then(({ data }) => {
+      if (!active || !data?.stats?.counts) return;
+      const remote = { ...defaultStats(), ...data.stats, counts: { ...emptyValues(), ...data.stats.counts }, daily: { ...emptyValues(), ...data.stats.daily } };
+      setStats(remote);
+      safeWrite(statsKey, remote);
+      safeWrite(`${COUNTS_PREFIX}${session.username}`, remote.counts);
+    });
+    return () => { active = false; };
+  }, [session.id]);
+  const persistStats = (next) => {
+    setStats(next);
+    safeWrite(statsKey, next);
+    safeWrite(`${COUNTS_PREFIX}${session.username}`, next.counts);
+    if (supabase && session.id) supabase.from('user_data').upsert({ user_id: session.id, stats: next, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }).then(({ error }) => { if (error) console.warn('Sanoq cloud sync:', error.message); });
+  };
   const counts = stats.counts;
 
   const addPrayer = (prayer) => {
@@ -297,16 +331,39 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
 }
 
 function App() {
-  const [session, setSession] = useState(() => safeRead(SESSION_KEY, null));
+  const [authSession, setAuthSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [theme, setTheme] = useState(() => { const saved = safeGetString(THEME_KEY); return saved || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); });
+
+  useEffect(() => {
+    if (!supabase) { setAuthReady(true); return undefined; }
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) { setAuthSession(data.session); setAuthReady(true); } });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setAuthSession(nextSession); setAuthReady(true); });
+    return () => { active = false; listener.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !authSession?.user?.id) { setProfile(null); return; }
+    let active = true;
+    supabase.from('profiles').select('id, username, full_name, email').eq('id', authSession.user.id).maybeSingle().then(({ data }) => { if (active) setProfile(data || null); });
+    return () => { active = false; };
+  }, [authSession?.user?.id]);
+
   useEffect(() => { document.documentElement.dataset.theme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#101b1b' : '#f6f7f8'); safeSetString(THEME_KEY, theme); }, [theme]);
   useEffect(() => { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {}); }, []);
-  const handleAuth = (nextSession) => { safeWrite(SESSION_KEY, nextSession); setSession(nextSession); };
-  const handleLogout = () => { safeRemove(SESSION_KEY); setSession(null); };
-  const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
-  return session ? <Dashboard session={session} onLogout={handleLogout} theme={theme} onThemeToggle={toggleTheme} /> : <AuthScreen onAuth={handleAuth} theme={theme} onThemeToggle={toggleTheme} />;
-}
 
+  const handleAuth = (nextSession) => setAuthSession(nextSession);
+  const handleLogout = async () => { if (supabase) await supabase.auth.signOut(); setProfile(null); setAuthSession(null); };
+  const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
+
+  if (!authReady) return <main className="boot-app"><div className="boot-card"><div className="boot-logo">✦</div><strong>Sanoq</strong><span><i /> Hisob tekshirilmoqda...</span></div></main>;
+  if (!authSession) return <AuthScreen onAuth={handleAuth} theme={theme} onThemeToggle={toggleTheme} />;
+  const user = authSession.user;
+  const userSession = { id: user.id, name: profile?.full_name || user.user_metadata?.full_name || 'Sanoq foydalanuvchisi', username: profile?.username || user.user_metadata?.username || user.email?.split('@')[0] || 'user', email: profile?.email || user.email || '' };
+  return <Dashboard session={userSession} onLogout={handleLogout} theme={theme} onThemeToggle={toggleTheme} />;
+}
 class AppErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
