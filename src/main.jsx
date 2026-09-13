@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useMemo, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const USERS_KEY = 'sanoq:users:v1';
@@ -29,6 +30,30 @@ function safeRead(key, fallback) {
 function safeWrite(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // The app still remains usable if browser storage is unavailable.
+  }
+}
+
+function safeGetString(key, fallback = '') {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeSetString(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // The app still remains usable if browser storage is unavailable.
+  }
+}
+
+function safeRemove(key) {
+  try {
+    localStorage.removeItem(key);
   } catch {
     // The app still remains usable if browser storage is unavailable.
   }
@@ -300,7 +325,7 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
     if (manual) {
       setManual(false);
       setManualBase(null);
-      localStorage.removeItem(manualKey);
+      safeRemove(manualKey);
       showToast('Oddiy sanoq rejimiga qaytdingiz.');
       return;
     }
@@ -346,7 +371,7 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
       persistCounts({ ...DEFAULT_COUNTS, ...manualBase });
       setManual(false);
       setManualBase(null);
-      localStorage.removeItem(manualKey);
+      safeRemove(manualKey);
       setModal(null);
       showToast('Avvalgi sanoqlarga qaytarildi.');
     }
@@ -400,14 +425,14 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
 function App() {
   const [session, setSession] = useState(() => safeRead(SESSION_KEY, null));
   const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem(THEME_KEY);
+    const saved = safeGetString(THEME_KEY);
     return saved || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#101b1b' : '#f6f7f8');
-    localStorage.setItem(THEME_KEY, theme);
+    safeSetString(THEME_KEY, theme);
   }, [theme]);
 
   useEffect(() => {
@@ -419,12 +444,47 @@ function App() {
     setSession(nextSession);
   };
   const handleLogout = () => {
-    localStorage.removeItem(SESSION_KEY);
+    safeRemove(SESSION_KEY);
     setSession(null);
   };
   const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
 
   return session ? <Dashboard session={session} onLogout={handleLogout} theme={theme} onThemeToggle={toggleTheme} /> : <AuthScreen onAuth={handleAuth} theme={theme} onThemeToggle={toggleTheme} />;
+}
+
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('Sanoq ilovasi yuklanish xatosi:', error, info);
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <main className="fatal-error-page">
+        <section className="fatal-error-card">
+          <div className="fatal-error-mark">!</div>
+          <h1>Ilova yuklanmadi</h1>
+          <p>Sanoq ishga tushayotganda kutilmagan xatolik yuz berdi. Qayta yuklab ko‘ring.</p>
+          <button className="primary-button" onClick={() => window.location.reload()}>Qayta yuklash</button>
+          <small>{this.state.error?.message || 'Noma’lum xatolik'}</small>
+        </section>
+      </main>
+    );
+  }
+}
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(<AppErrorBoundary><App /></AppErrorBoundary>);
 }
 
 export default App;
