@@ -52,9 +52,13 @@ cd android
 
 APK manzili: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
+## Qur’on va qazo
+
+Qur’onning standart **114 ta surasi va 6 236 ta oyati** ilova ichiga offline bundle qilingan. O‘qish va yodlash rejimi, oyat/sura/sahifa bookmarklari, davom etish joyi va Qur’on statistikasi mavjud. Dashboard’da Qazo namozlar bo‘limini ham user alohida yoqib, sonlarni default yashirilgan holatda boshqarishi mumkin.
+
 ## Versiya yangilanishi
 
-Hozirgi versiya `0.0.02`. Account oynasidagi **Versiyani tekshirish** tugmasi GitHub’dagi `public/version.json` faylini tekshiradi. Yangi versiya topilsa, **Yangilash** tugmasi release APK’ni ochadi. Android oxirgi o‘rnatish tasdig‘ini xavfsizlik sabab o‘zi so‘raydi.
+Hozirgi versiya `0.01.00`. Account oynasidagi **Versiyani tekshirish** tugmasi GitHub’dagi `public/version.json` faylini tekshiradi. Yangi versiya topilsa, **Yangilash** tugmasi release APK’ni ochadi. Android oxirgi o‘rnatish tasdig‘ini xavfsizlik sabab o‘zi so‘raydi.
 
 ## Offline ishlash
 

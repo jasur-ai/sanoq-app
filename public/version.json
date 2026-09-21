@@ -1,5 +1,5 @@
 {
-  "version": "0.0.02",
-  "releaseNotes": "Real online Supabase account, server tekshiradigan unique username, cloud statistics va moslashuvchan UI.",
-  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.0.02/Sanoq.apk"
+  "version": "0.01.00",
+  "releaseNotes": "Dashboard sozlamalari, to‘liq 114 surali Qur’on, o‘qish va yodlash rejimlari, eslab qolish joylari, Qur’on statistikasi, qazo namozlar va responsive UI.",
+  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.00/Sanoq.apk"
 }
