@@ -378,17 +378,20 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
   const installUpdate = async () => {
     const url = update.latest?.apkUrl;
     if (!url) return showToast('Yangilanish manzili topilmadi.', 'error');
-    try {
-      if (window.Capacitor?.isNativePlatform?.()) {
+    const nativeApp = Boolean(window.Capacitor?.isNativePlatform?.());
+    if (nativeApp) {
+      try {
         await SanoqUpdater.downloadAndInstall({ url });
-        showToast('Yangilanish yuklanmoqda. Tayyor bo‘lgach o‘rnatish oynasi ochiladi.');
-      } else {
-        window.open(url, '_blank', 'noopener,noreferrer');
+        showToast('Yangilanish yuklanmoqda. Tayyor bo‘lgach ilova yopilib, o‘rnatish boshlanadi.');
+      } catch (error) {
+        // Never send an Android user to the GitHub page. A native updater
+        // failure must stay inside the app and explain what went wrong.
+        console.error('Sanoq native updater:', error);
+        showToast('Yangilashni boshlashda xatolik yuz berdi. Qayta urinib ko‘ring.', 'error');
       }
-    } catch {
-      showToast('Yangilanishni boshlashda xatolik yuz berdi.', 'error');
-      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
     }
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
   const renderWidget = (id) => { if (id === 'prayers') return <PrayerBoard key={id} stats={stats} manual={manual} manualBase={manualBase} onReset={() => setModal({ type: 'reset' })} onAdd={(item) => setModal({ type: 'increment', prayer: item })} onManualEdit={openManual} />; if (id === 'stats') return <StatsPreview key={id} stats={stats} onOpen={() => setActiveView('stats')} />; if (id === 'quran') return <QuranPreview key={id} progress={stats.quran} onOpen={() => setActiveView('quran')} />; return <QazoWidget key={id} qazo={stats.qazo} onChange={(next) => persistStats({ ...stats, qazo: next })} />; };
   const renderMain = () => { if (activeView === 'quran') return <QuranView progress={stats.quran} onChange={saveQuran} onSaveSession={saveQuranSession} />; if (activeView === 'stats') return <StatsSection stats={stats} />; return <>{stats.preferences.order.filter((id) => stats.preferences.widgets.includes(id)).map(renderWidget)}{stats.preferences.widgets.length === 0 && <div className="empty-dashboard"><Icon name="settings" size={22} /><strong>Dashboard bo‘sh</strong><p>Kerakli bo‘limlarni tanlash uchun sozlamalarni oching.</p><button className="primary-button" onClick={() => setCustomizeOpen(true)}>Bo‘limlarni tanlash</button></div>}<section className="tip-card"><div className="tip-icon"><Icon name="spark" size={20} /></div><div><strong>Sanoq — shoshilmasdan</strong><p>Namoz va Qur’on natijalari avtomatik saqlanadi. Internet bo‘lmasa ham foydalaning.</p></div><span className="tip-decoration">✦</span></section></>; };

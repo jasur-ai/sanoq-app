@@ -81,6 +81,12 @@ public class SanoqUpdaterPlugin extends Plugin {
         installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
         installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         getContext().startActivity(installIntent);
+
+        // Close the old app while Android is replacing its APK. The receiver
+        // reopens the new version after PACKAGE_REPLACED is delivered.
+        if (getActivity() != null) {
+            getActivity().finishAndRemoveTask();
+        }
     }
 
     private void unregisterDownloadReceiver() {
