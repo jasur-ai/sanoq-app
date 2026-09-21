@@ -1,5 +1,5 @@
 {
-  "version": "0.01.00",
-  "releaseNotes": "Dashboard sozlamalari, to‘liq 114 surali Qur’on, o‘qish va yodlash rejimlari, eslab qolish joylari, Qur’on statistikasi, qazo namozlar va responsive UI.",
-  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.00/Sanoq.apk"
+  "version": "0.01.01",
+  "releaseNotes": "Yangilash tugmasi endi GitHub sahifasiga yubormaydi: Android ichki yuklash oynasi va o‘rnatish jarayoni bilan ishlaydi.",
+  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.01/Sanoq.apk"
 }

@@ -6,7 +6,7 @@ import quranSurahs from './data/quran.json';
 import './styles.css';
 
 const SanoqUpdater = registerPlugin('SanoqUpdater');
-const APP_VERSION = '0.01.00';
+const APP_VERSION = '0.01.01';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/jasur-ai/sanoq-app/main/public/version.json';
 const USERS_KEY = 'sanoq:users:v1';
 const SESSION_KEY = 'sanoq:session:v1';
