@@ -9,3 +9,6 @@ dist/
 .android-build/
 .jdk17/
 .jdk21/
+
+# Local Android signing material
+.sanoq-signing/

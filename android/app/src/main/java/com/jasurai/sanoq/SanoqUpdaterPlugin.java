@@ -1,13 +1,16 @@
 package com.jasurai.sanoq;
 
 import android.app.DownloadManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
@@ -17,8 +20,12 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+
 @CapacitorPlugin(name = "SanoqUpdater")
 public class SanoqUpdaterPlugin extends Plugin {
+    private static final String TAG = "SanoqUpdater";
     private BroadcastReceiver downloadReceiver;
     private long activeDownloadId = -1L;
 
@@ -63,7 +70,11 @@ public class SanoqUpdaterPlugin extends Plugin {
                 if (completedId != activeDownloadId) return;
 
                 Uri apkUri = manager.getUriForDownloadedFile(completedId);
-                if (apkUri != null) openInstaller(apkUri);
+                if (apkUri != null) {
+                    installDownloadedApk(apkUri);
+                } else {
+                    Log.e(TAG, "Yuklangan APK manzili topilmadi");
+                }
                 unregisterDownloadReceiver();
             }
         };
@@ -76,16 +87,68 @@ public class SanoqUpdaterPlugin extends Plugin {
         }
     }
 
-    private void openInstaller(Uri apkUri) {
+    private void installDownloadedApk(final Uri apkUri) {
+        new Thread(() -> {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    installWithPackageInstaller(apkUri);
+                } else {
+                    openLegacyInstaller(apkUri);
+                }
+            } catch (Exception error) {
+                Log.e(TAG, "APK o‘rnatish boshlandi, lekin xatolik yuz berdi", error);
+                openLegacyInstaller(apkUri);
+            }
+        }, "sanoq-apk-install").start();
+    }
+
+    private void installWithPackageInstaller(Uri apkUri) throws Exception {
+        PackageInstaller packageInstaller = getContext().getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(getContext().getPackageName());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        }
+
+        int sessionId = packageInstaller.createSession(params);
+        PackageInstaller.Session session = packageInstaller.openSession(sessionId);
+        try {
+            try (InputStream input = getContext().getContentResolver().openInputStream(apkUri);
+                 OutputStream output = session.openWrite("Sanoq.apk", 0, -1)) {
+                if (input == null) throw new IllegalStateException("APK faylini o‘qib bo‘lmadi");
+                byte[] buffer = new byte[64 * 1024];
+                int length;
+                while ((length = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, length);
+                }
+                session.fsync(output);
+            }
+
+            Intent callbackIntent = new Intent(getContext(), UpdateInstallReceiver.class);
+            callbackIntent.setAction("com.jasurai.sanoq.UPDATE_INSTALL_RESULT");
+            int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                pendingFlags |= PendingIntent.FLAG_MUTABLE;
+            }
+            PendingIntent callback = PendingIntent.getBroadcast(getContext(), sessionId, callbackIntent, pendingFlags);
+            session.commit(callback.getIntentSender());
+
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> getActivity().finishAndRemoveTask());
+            }
+        } finally {
+            session.close();
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void openLegacyInstaller(Uri apkUri) {
         Intent installIntent = new Intent(Intent.ACTION_VIEW);
         installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
         installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         getContext().startActivity(installIntent);
-
-        // Close the old app while Android is replacing its APK. The receiver
-        // reopens the new version after PACKAGE_REPLACED is delivered.
         if (getActivity() != null) {
-            getActivity().finishAndRemoveTask();
+            getActivity().runOnUiThread(() -> getActivity().finishAndRemoveTask());
         }
     }
 

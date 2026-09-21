@@ -1,5 +1,5 @@
 {
-  "version": "0.01.01",
-  "releaseNotes": "Yangilash tugmasi endi GitHub sahifasiga yubormaydi: Android ichki yuklash oynasi va o‘rnatish jarayoni bilan ishlaydi.",
-  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.01/Sanoq.apk"
+  "version": "0.01.02",
+  "releaseNotes": "Bir bosishda ilova ichidan yangilanish: APK bevosita yuklanadi, ilova yopiladi va Android PackageInstaller yangilangan ilovani qayta ochadi.",
+  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.02/Sanoq.apk"
 }

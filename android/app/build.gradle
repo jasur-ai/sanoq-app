@@ -7,8 +7,8 @@ android {
         applicationId "com.jasurai.sanoq"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "0.01.02"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,9 +16,24 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            def signingStore = System.getenv('SANOQ_KEYSTORE') ?: project.findProperty('sanoqKeystore')
+            def signingPassword = System.getenv('SANOQ_KEYSTORE_PASSWORD') ?: project.findProperty('sanoqKeystorePassword')
+            def signingAlias = System.getenv('SANOQ_KEY_ALIAS') ?: project.findProperty('sanoqKeyAlias')
+            def aliasPassword = System.getenv('SANOQ_KEY_PASSWORD') ?: project.findProperty('sanoqKeyPassword')
+            if (signingStore && signingPassword && signingAlias && aliasPassword) {
+                storeFile file(signingStore)
+                storePassword signingPassword
+                keyAlias signingAlias
+                keyPassword aliasPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
