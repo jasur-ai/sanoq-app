@@ -1,9 +1,11 @@
 import { Component, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { registerPlugin } from '@capacitor/core';
 import { supabase, supabaseConfigured } from './supabaseClient';
 import quranSurahs from './data/quran.json';
 import './styles.css';
 
+const SanoqUpdater = registerPlugin('SanoqUpdater');
 const APP_VERSION = '0.01.00';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/jasur-ai/sanoq-app/main/public/version.json';
 const USERS_KEY = 'sanoq:users:v1';
@@ -373,7 +375,21 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
   const saveQuranSession = (sessionInfo) => { const nextSessions = [...stats.quran.sessions, { ...sessionInfo, date: dateKey(), id: `${Date.now()}-${sessionInfo.surahId}` }].slice(-180); saveQuran({ ...stats.quran, sessions: nextSessions }); };
   const savePrefs = (prefs) => { persistStats({ ...stats, preferences: { widgets: prefs.widgets, order: prefs.order } }); setCustomizeOpen(false); showToast('Bosh sahifa sozlamalari saqlandi.'); };
   const checkUpdate = async () => { if (!navigator.onLine) return setUpdate({ status: 'offline', latest: null }); setUpdate({ status: 'checking', latest: null }); try { const response = await fetch(`${VERSION_CHECK_URL}?t=${Date.now()}`, { cache: 'no-store' }); if (!response.ok) throw new Error('version check failed'); const latest = await response.json(); setUpdate({ status: versionCompare(latest.version, APP_VERSION) > 0 ? 'available' : 'upToDate', latest }); } catch { setUpdate({ status: 'error', latest: null }); } };
-  const installUpdate = () => { const url = update.latest?.apkUrl; if (!url) return showToast('Yangilanish manzili topilmadi.', 'error'); try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { window.location.href = url; } };
+  const installUpdate = async () => {
+    const url = update.latest?.apkUrl;
+    if (!url) return showToast('Yangilanish manzili topilmadi.', 'error');
+    try {
+      if (window.Capacitor?.isNativePlatform?.()) {
+        await SanoqUpdater.downloadAndInstall({ url });
+        showToast('Yangilanish yuklanmoqda. Tayyor bo‘lgach o‘rnatish oynasi ochiladi.');
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      showToast('Yangilanishni boshlashda xatolik yuz berdi.', 'error');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
   const renderWidget = (id) => { if (id === 'prayers') return <PrayerBoard key={id} stats={stats} manual={manual} manualBase={manualBase} onReset={() => setModal({ type: 'reset' })} onAdd={(item) => setModal({ type: 'increment', prayer: item })} onManualEdit={openManual} />; if (id === 'stats') return <StatsPreview key={id} stats={stats} onOpen={() => setActiveView('stats')} />; if (id === 'quran') return <QuranPreview key={id} progress={stats.quran} onOpen={() => setActiveView('quran')} />; return <QazoWidget key={id} qazo={stats.qazo} onChange={(next) => persistStats({ ...stats, qazo: next })} />; };
   const renderMain = () => { if (activeView === 'quran') return <QuranView progress={stats.quran} onChange={saveQuran} onSaveSession={saveQuranSession} />; if (activeView === 'stats') return <StatsSection stats={stats} />; return <>{stats.preferences.order.filter((id) => stats.preferences.widgets.includes(id)).map(renderWidget)}{stats.preferences.widgets.length === 0 && <div className="empty-dashboard"><Icon name="settings" size={22} /><strong>Dashboard bo‘sh</strong><p>Kerakli bo‘limlarni tanlash uchun sozlamalarni oching.</p><button className="primary-button" onClick={() => setCustomizeOpen(true)}>Bo‘limlarni tanlash</button></div>}<section className="tip-card"><div className="tip-icon"><Icon name="spark" size={20} /></div><div><strong>Sanoq — shoshilmasdan</strong><p>Namoz va Qur’on natijalari avtomatik saqlanadi. Internet bo‘lmasa ham foydalaning.</p></div><span className="tip-decoration">✦</span></section></>; };
   const statusText = { idle: 'Internetga ulangan holda versiyani tekshiring.', checking: 'Yangilanishlar tekshirilmoqda...', upToDate: `Sizda eng so‘nggi versiya — ${APP_VERSION}.`, available: `${update.latest?.version} versiyasi tayyor.`, offline: 'Internet aloqasi yo‘q. Keyinroq qayta urinib ko‘ring.', error: 'Tekshirishda xatolik yuz berdi.' }[update.status];
