@@ -6,7 +6,7 @@ import quranSurahs from './data/quran.json';
 import './styles.css';
 
 const SanoqUpdater = registerPlugin('SanoqUpdater');
-const APP_VERSION = '0.01.03';
+const APP_VERSION = '0.01.04';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/jasur-ai/sanoq-app/main/public/version.json';
 const USERS_KEY = 'sanoq:users:v1';
 const SESSION_KEY = 'sanoq:session:v1';
@@ -415,7 +415,7 @@ function Dashboard({ session, onLogout, theme, onThemeToggle }) {
     const nativeApp = Boolean(window.Capacitor?.isNativePlatform?.());
     if (nativeApp) {
       try {
-        await SanoqUpdater.downloadAndInstall({ url });
+        await SanoqUpdater.downloadAndInstall({ url: `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(update.latest?.version || APP_VERSION)}-${Date.now()}`, versionCode: Number(update.latest?.versionCode || 0) });
         showToast('Yangilanish yuklanmoqda. Tayyor bo‘lgach ilova yopilib, o‘rnatish boshlanadi.');
       } catch (error) {
         // Never send an Android user to the GitHub page. A native updater
