@@ -613,3 +613,39 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(41, 172, 133
 @media (max-width: 720px) { .qazo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 430px) { .qazo-grid { grid-template-columns: 1fr; } }
 .qazo-hidden-value { padding: 3px 0; border: 0; color: var(--primary); background: transparent; font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 2px; }
+
+/* Focused interaction polish */
+body.modal-open { overflow: hidden; }
+.modal-backdrop { isolation: isolate; }
+.modal-card, .account-modal, .customize-modal { pointer-events: auto; }
+.widget-heading-actions { display: inline-flex; align-items: center; gap: 8px; }
+.privacy-toggle { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; color: var(--text-muted); background: var(--surface-soft); }
+.privacy-toggle:hover { color: var(--primary); border-color: var(--primary); }
+.google-button { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--line); border-radius: 11px; color: var(--text-strong); background: var(--surface); font-size: 11px; font-weight: 800; transition: .2s ease; }
+.google-button:hover { border-color: var(--primary); background: var(--primary-soft); }
+.google-button b { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: #4285f4; background: #fff; font-family: Arial, sans-serif; font-size: 15px; }
+.auth-divider { display: flex; align-items: center; gap: 10px; color: var(--text-faint); font-size: 10px; }
+.auth-divider::before, .auth-divider::after { content: ''; height: 1px; flex: 1; background: var(--line); }
+.auth-link { align-self: center; padding: 2px 0; border: 0; color: var(--primary); background: transparent; font-size: 10px; font-weight: 800; }
+.auth-link:hover { text-decoration: underline; }
+.auth-forgot { align-self: flex-end; margin-top: -8px; }
+.recovery-layout { display: flex; justify-content: center; grid-template-columns: none; }
+.recovery-layout .auth-card { max-width: 440px; }
+.drag-handle { width: 18px; color: var(--text-faint); cursor: grab; font-size: 19px; line-height: 1; user-select: none; }
+.customize-row { transition: transform .18s ease, opacity .18s ease, border-color .18s ease; }
+.customize-row.dragging { opacity: .45; transform: scale(.985); border-color: var(--primary); }
+.privacy-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 11px 10px; border: 1px solid var(--line); border-radius: 11px; color: var(--text-muted); background: var(--surface-soft); font-size: 10px; }
+.privacy-setting span { display: flex; align-items: center; gap: 7px; }
+.privacy-setting svg { color: var(--primary); }
+.privacy-setting input { width: 17px; height: 17px; accent-color: var(--primary); }
+.reader-topbar { position: sticky; bottom: 12px; z-index: 20; margin: 0 0 18px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-sm); backdrop-filter: blur(12px); }
+.bookmark-menu { top: auto; bottom: calc(100% + 8px); }
+.ayah-list { padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.ayah-row { border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.ayah-row:last-child { border-bottom: 0; }
+.ayah-text { font-family: "Amiri", "Noto Naskh Arabic", serif; line-height: 2.15; }
+@media (max-width: 600px) {
+  .widget-heading-actions { gap: 4px; }
+  .reader-topbar { bottom: 8px; }
+  .ayah-list { padding: 10px; }
+}

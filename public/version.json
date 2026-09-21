@@ -1,5 +1,5 @@
 {
-  "version": "0.01.02",
-  "releaseNotes": "Bir bosishda ilova ichidan yangilanish: APK bevosita yuklanadi, ilova yopiladi va Android PackageInstaller yangilangan ilovani qayta ochadi.",
-  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.02/Sanoq.apk"
+  "version": "0.01.03",
+  "releaseNotes": "Qur’on o‘qish interfeysi yaxshilandi, eslab qolish paneli qulaylashtirildi, dashboard raqamlarini yashirish, drag-and-drop tartiblash, Google orqali kirish va parolni email orqali tiklash qo‘shildi.",
+  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.03/Sanoq.apk"
 }
