@@ -8,7 +8,7 @@ import quranTranslations from './data/quran-translation-en.json';
 import './styles.css';
 
 const SanoqUpdater = registerPlugin('SanoqUpdater');
-const APP_VERSION = '0.01.06';
+const APP_VERSION = '0.01.07';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/jasur-ai/sanoq-app/main/public/version.json';
 const USERS_KEY = 'sanoq:users:v1';
 const SESSION_KEY = 'sanoq:session:v1';
@@ -520,7 +520,7 @@ function App() {
   useEffect(() => { document.documentElement.dataset.theme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#101b1b' : '#f6f7f8'); safeSetString(THEME_KEY, theme); }, [theme]);
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
-    const cacheVersion = 'sanoq-shell-v6';
+    const cacheVersion = 'sanoq-shell-v7';
     navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(APP_VERSION)}`)
       .then((registration) => registration.update())
       .catch(() => {});

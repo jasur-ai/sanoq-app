@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sanoq-shell-v6';
+const CACHE_NAME = 'sanoq-shell-v7';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (event) => {
