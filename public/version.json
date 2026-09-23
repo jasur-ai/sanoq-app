@@ -1,6 +1,6 @@
 {
-  "version": "0.01.04",
-  "versionCode": 4,
-  "releaseNotes": "Yangilanish yuklamasi endi eski lokal APKni tekshiradi, faqat yangi bo‘lsa ishlatadi; aks holda yangisini toza yuklaydi. Shu sabab versiya eski raqamda qolib ketmaydi.",
-  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.04/Sanoq.apk"
+  "version": "0.01.05",
+  "versionCode": 5,
+  "releaseNotes": "Qur’on endi 604 sahifali Madina mushafi sahifa raqamlari bilan o‘qiladi; eslab qolish tugmasi yon tomonda doim ko‘rinadi, sahifa bookmarki aniq sahifani saqlaydi.",
+  "apkUrl": "https://github.com/jasur-ai/sanoq-app/releases/download/v0.01.05/Sanoq.apk"
 }

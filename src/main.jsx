@@ -3,10 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { registerPlugin } from '@capacitor/core';
 import { supabase, supabaseConfigured } from './supabaseClient';
 import quranSurahs from './data/quran.json';
+import quranPages from './data/quran-pages.json';
 import './styles.css';
 
 const SanoqUpdater = registerPlugin('SanoqUpdater');
-const APP_VERSION = '0.01.04';
+const APP_VERSION = '0.01.05';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/jasur-ai/sanoq-app/main/public/version.json';
 const USERS_KEY = 'sanoq:users:v1';
 const SESSION_KEY = 'sanoq:session:v1';
@@ -24,6 +25,7 @@ const PRAYERS = [
   { id: 'vitr', title: 'Vitr', subtitle: 'Vitr namozi', arabic: 'وتر', accent: 'vitr', icon: 'spark' },
 ];
 const QAZO_PRAYERS = PRAYERS;
+const pageForAyah = (surahId, ayah) => Number(quranPages[`${surahId}:${ayah}`] || 1);
 
 const emptyValues = () => PRAYERS.reduce((result, prayer) => ({ ...result, [prayer.id]: 0 }), {});
 const defaultDashboardPrefs = () => ({ widgets: ['prayers', 'stats', 'quran'], order: ['prayers', 'stats', 'quran', 'qazo'], hideStats: false });
@@ -294,21 +296,26 @@ function QuranReader({ surah, progress, mode, onChange, onSaveSession, onBack })
   const currentAyah = Math.min(Math.max(Number(progress.lastPosition.ayah || 1), 1), surah.verses.length);
   const [selectedAyah, setSelectedAyah] = useState(progress.lastPosition.surahId === surah.id ? currentAyah : 1);
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
+  const [readerView, setReaderView] = useState('book');
   const sessionStart = useRef(Date.now());
   const memory = progress.memorization?.[surah.id] || { start: null, end: null, complete: false };
+  const currentPage = pageForAyah(surah.id, selectedAyah);
+  const surahPages = [...new Set(surah.verses.map((ayah) => pageForAyah(surah.id, ayah.number)))];
+  const pageIndex = Math.max(0, surahPages.indexOf(currentPage));
+  const pageAyahs = surah.verses.filter((ayah) => pageForAyah(surah.id, ayah.number) === currentPage);
   useEffect(() => { sessionStart.current = Date.now(); return () => { const minutes = Math.max(1, Math.round((Date.now() - sessionStart.current) / 60000)); if (minutes >= 1) onSaveSession({ surahId: surah.id, mode, minutes, ayahFrom: selectedAyah, ayahTo: selectedAyah }); }; }, [surah.id, mode]);
   const chooseAyah = (number) => { setSelectedAyah(number); onChange({ ...progress, lastPosition: { surahId: surah.id, ayah: number, mode } }); };
+  const goPage = (direction) => { const nextPage = surahPages[pageIndex + direction]; if (!nextPage) return; const firstAyah = surah.verses.find((ayah) => pageForAyah(surah.id, ayah.number) === nextPage); if (firstAyah) chooseAyah(firstAyah.number); };
   const saveBookmark = (type) => {
-    const key = `${type}-${surah.id}-${type === 'surah' ? 0 : type === 'page' ? Math.ceil(selectedAyah / 15) : selectedAyah}`;
+    const key = `${type}-${surah.id}-${type === 'surah' ? 0 : type === 'page' ? currentPage : selectedAyah}`;
     const next = progress.bookmarks.filter((bookmark) => bookmark.key !== key);
-    next.unshift({ key, type, surahId: surah.id, ayah: selectedAyah, page: Math.ceil(selectedAyah / 15), createdAt: new Date().toISOString() });
+    next.unshift({ key, type, surahId: surah.id, ayah: selectedAyah, page: currentPage, createdAt: new Date().toISOString() });
     onChange({ ...progress, bookmarks: next.slice(0, 100), lastPosition: { surahId: surah.id, ayah: selectedAyah, mode } });
     setBookmarkOpen(false);
   };
   const setMemory = (next) => onChange({ ...progress, memorization: { ...progress.memorization, [surah.id]: { ...memory, ...next, updatedAt: new Date().toISOString() } }, lastPosition: { surahId: surah.id, ayah: selectedAyah, mode: 'memorize' } });
-  return <section className="quran-reader"><div className="reader-topbar"><button className="back-button" onClick={onBack}><Icon name="arrowLeft" size={17} /> Suralar</button><div className="reader-actions"><span className="reader-page">Sahifa {Math.ceil(selectedAyah / 15)}</span><div className="bookmark-wrap"><button className={`secondary-button reader-bookmark ${bookmarkOpen ? 'active' : ''}`} onClick={() => setBookmarkOpen((value) => !value)}><Icon name="bookmark" size={16} /> Eslab qolish</button>{bookmarkOpen && <QuranBookmarkMenu onSave={saveBookmark} />}</div></div></div><div className="reader-title"><div><span className="surah-number">{surah.id}</span><div><h2>{surah.name}</h2><p>{surah.nameArabic} <i>•</i> {surah.ayahCount} oyat <i>•</i> {surah.place === 'Mecca' ? 'Makkiy' : 'Madaniy'}</p></div></div><div className="mode-switch"><button className={mode === 'read' ? 'active' : ''} onClick={() => onChange({ ...progress, lastPosition: { surahId: surah.id, ayah: selectedAyah, mode: 'read' } })}>O‘qish</button><button className={mode === 'memorize' ? 'active' : ''} onClick={() => onChange({ ...progress, lastPosition: { surahId: surah.id, ayah: selectedAyah, mode: 'memorize' } })}>Yodlash</button></div></div>{mode === 'memorize' && <div className="memory-panel"><div><span className="memory-kicker"><Icon name="spark" size={14} /> Yodlash rejimi</span><strong>{memory.complete ? 'Bu sura yodlangan' : memory.start && memory.end ? `${memory.start}–${memory.end}-oyatlar oralig‘i` : 'Boshlanish va oxirgi oyatni belgilang'}</strong><p>Avvalgi va oxirgi belgilangan oyatlar orasidagi qism avtomatik saqlanadi.</p></div><div className="memory-actions"><button onClick={() => setMemory({ start: selectedAyah, complete: false })}>Birinchi oyat: {selectedAyah}</button><button onClick={() => setMemory({ end: selectedAyah, complete: false })}>Oxirgi oyat: {selectedAyah}</button><button className={memory.complete ? 'done' : ''} onClick={() => setMemory({ start: 1, end: surah.verses.length, complete: !memory.complete })}><Icon name={memory.complete ? 'check' : 'checkCircle'} size={14} /> {memory.complete ? 'Yodlandi' : 'Butun surani yodladim'}</button></div></div>}<div className="ayah-list">{surah.verses.map((ayah) => <button className={`ayah-row ${selectedAyah === ayah.number ? 'selected' : ''}`} key={ayah.number} onClick={() => chooseAyah(ayah.number)}><span className="ayah-number">{ayah.number}</span><span className="ayah-text" dir="rtl" lang="ar">{ayah.text}</span><span className="ayah-check">{mode === 'memorize' && memory.complete && <Icon name="check" size={15} />}</span></button>)}</div></section>;
+  return <section className="quran-reader"><aside className="reader-bookmark-rail"><button className={`reader-bookmark-side ${bookmarkOpen ? 'active' : ''}`} onClick={() => setBookmarkOpen((value) => !value)} title="Eslab qolish"><Icon name="bookmark" size={17} /><span>Eslab qolish</span></button>{bookmarkOpen && <QuranBookmarkMenu onSave={saveBookmark} />}</aside><div className="reader-topbar"><button className="back-button" onClick={onBack}><Icon name="arrowLeft" size={17} /> Suralar</button><div className="reader-actions"><span className="reader-page">Sahifa {currentPage} / 604</span><div className="reader-view-switch"><button className={readerView === 'book' ? 'active' : ''} onClick={() => setReaderView('book')}>Kitob sahifasi</button><button className={readerView === 'verses' ? 'active' : ''} onClick={() => setReaderView('verses')}>Oyatlar</button></div></div></div><div className="reader-title"><div><span className="surah-number">{surah.id}</span><div><h2>{surah.name}</h2><p>{surah.nameArabic} <i>•</i> {surah.ayahCount} oyat <i>•</i> {surah.place === 'Mecca' ? 'Makkiy' : 'Madaniy'}</p></div></div><div className="mode-switch"><button className={mode === 'read' ? 'active' : ''} onClick={() => onChange({ ...progress, lastPosition: { surahId: surah.id, ayah: selectedAyah, mode: 'read' } })}>O‘qish</button><button className={mode === 'memorize' ? 'active' : ''} onClick={() => onChange({ ...progress, lastPosition: { surahId: surah.id, ayah: selectedAyah, mode: 'memorize' } })}>Yodlash</button></div></div>{mode === 'memorize' && <div className="memory-panel"><div><span className="memory-kicker"><Icon name="spark" size={14} /> Yodlash rejimi</span><strong>{memory.complete ? 'Bu sura yodlangan' : memory.start && memory.end ? `${memory.start}–${memory.end}-oyatlar oralig‘i` : 'Boshlanish va oxirgi oyatni belgilang'}</strong><p>Avvalgi va oxirgi belgilangan oyatlar orasidagi qism avtomatik saqlanadi.</p></div><div className="memory-actions"><button onClick={() => setMemory({ start: selectedAyah, complete: false })}>Birinchi oyat: {selectedAyah}</button><button onClick={() => setMemory({ end: selectedAyah, complete: false })}>Oxirgi oyat: {selectedAyah}</button><button className={memory.complete ? 'done' : ''} onClick={() => setMemory({ start: 1, end: surah.verses.length, complete: !memory.complete })}><Icon name={memory.complete ? 'check' : 'checkCircle'} size={14} /> {memory.complete ? 'Yodlandi' : 'Butun surani yodladim'}</button></div></div>}{readerView === 'book' ? <div className="mushaf-page" dir="rtl"><div className="mushaf-page-number">{currentPage}</div><div className="mushaf-lines">{pageAyahs.map((ayah) => <button className={`mushaf-ayah ${selectedAyah === ayah.number ? 'selected' : ''}`} key={ayah.number} onClick={() => chooseAyah(ayah.number)}><span className="mushaf-text">{ayah.text}</span><span className="mushaf-ayah-number">﴿{ayah.number}﴾</span></button>)}</div><div className="mushaf-page-footer"><button disabled={pageIndex === 0} onClick={() => goPage(-1)}>‹ Oldingi sahifa</button><span>{currentPage}</span><button disabled={pageIndex === surahPages.length - 1} onClick={() => goPage(1)}>Keyingi sahifa ›</button></div></div> : <div className="ayah-list">{surah.verses.map((ayah) => <button className={`ayah-row ${selectedAyah === ayah.number ? 'selected' : ''}`} key={ayah.number} onClick={() => chooseAyah(ayah.number)}><span className="ayah-number">{ayah.number}</span><span className="ayah-text" dir="rtl" lang="ar">{ayah.text}</span><span className="ayah-check">{mode === 'memorize' && memory.complete && <Icon name="check" size={15} />}</span></button>)}</div>}</section>;
 }
-
 function QuranView({ progress, onChange, onSaveSession }) {
   const [mode, setMode] = useState(progress.lastPosition.mode || 'read');
   const [activeSurahId, setActiveSurahId] = useState(null);

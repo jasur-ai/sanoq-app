@@ -1,0 +1,3 @@
+Page metadata source: AlQuran.cloud quran-uthmani edition.
+Endpoint used: https://api.alquran.cloud/v1/quran/quran-uthmani
+The returned verse metadata contains the standard Madinah Mushaf page field (1-604).
