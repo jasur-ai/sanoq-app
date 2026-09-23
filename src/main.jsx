@@ -482,7 +482,20 @@ function App() {
   }, [authSession?.user?.id]);
 
   useEffect(() => { document.documentElement.dataset.theme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#101b1b' : '#f6f7f8'); safeSetString(THEME_KEY, theme); }, [theme]);
-  useEffect(() => { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {}); }, []);
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const cacheVersion = 'sanoq-shell-v5';
+    navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(APP_VERSION)}`)
+      .then((registration) => registration.update())
+      .catch(() => {});
+    if ('caches' in window) {
+      caches.keys()
+        .then((keys) => Promise.all(keys
+          .filter((key) => key.startsWith('sanoq-shell-') && key !== cacheVersion)
+          .map((key) => caches.delete(key))))
+        .catch(() => {});
+    }
+  }, []);
 
   const handleAuth = (nextSession) => setAuthSession(nextSession);
   const handleLogout = async () => { if (supabase) await supabase.auth.signOut(); setProfile(null); setAuthSession(null); };
